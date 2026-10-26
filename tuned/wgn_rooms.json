@@ -1,0 +1,13 @@
+{
+ "experiment": "wgn_rooms",
+ "settings": {"placeholder": true, "where": "dummy values, sweep not run"},
+ "git": "placeholder",
+ "params": {
+  "dabsi": {"rho": 1.0, "mu": 0.4},
+  "dgd": {"alpha": 1e-5},
+  "dsaawet": {"alpha": 0.1},
+  "mcqn": {"mu": 0.2},
+  "spmcqn": {"mu": 0.1}
+ },
+ "history": {}
+}

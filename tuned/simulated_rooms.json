@@ -1,0 +1,23 @@
+{
+ "experiment": "simulated_rooms",
+ "settings": {"placeholder": true, "where": "dummy values, sweep not run"},
+ "git": "placeholder",
+ "params": {
+  "dabsi_l0": {"rho": 1.0, "mu": 0.4},
+  "dabsi_l1e-05": {"rho": 1.0, "mu": 0.4},
+  "dabsi_l0.0001": {"rho": 1.0, "mu": 0.4},
+  "dgd_l0": {"alpha": 1e-6},
+  "dgd_l1e-05": {"alpha": 1e-6},
+  "dgd_l0.0001": {"alpha": 1e-6},
+  "dsaawet_l0": {"alpha": 1e-3},
+  "dsaawet_l1e-05": {"alpha": 1e-3},
+  "dsaawet_l0.0001": {"alpha": 1e-3},
+  "mcqn_l0": {"mu": 0.02},
+  "mcqn_l1e-05": {"mu": 0.02},
+  "mcqn_l0.0001": {"mu": 0.02},
+  "spmcqn_l0": {"mu": 0.01},
+  "spmcqn_l1e-05": {"mu": 0.01},
+  "spmcqn_l0.0001": {"mu": 0.01}
+ },
+ "history": {}
+}
