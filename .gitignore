@@ -15,8 +15,9 @@ __pycache__/
 .data/
 .librispeech
 .myriad
+work/
 
 # generated paper tables and plots
-tables/
-plots/
-*.pdf
+# tables/
+# plots/
+# *.pdf

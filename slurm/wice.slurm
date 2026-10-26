@@ -14,12 +14,12 @@
 
 set -euo pipefail
 : "${EXPERIMENT:?set EXPERIMENT=<name>, e.g. --export=ALL,EXPERIMENT=wgn_rooms}"
-CODE=${CODE:-$VSC_DATA/dabsi/src}
+CODE=${CODE:-$VSC_DATA/dabsi}
 WORK=${WORK:-$VSC_DATA/dabsi/work}  # cwd: .librispeech and .myriad are resolved relative to it
 OUT=${OUT:-$VSC_DATA/dabsi/data}
 
 module purge
-module load <python-module>  # placeholder: a Python 3.12-3.14 module from `module av Python`
+module load Python/3.14.2-GCCcore-15.2.0
 source "$VSC_DATA/dabsi/venv-$VSC_ARCH_LOCAL/bin/activate"
 
 mkdir -p "$WORK"
