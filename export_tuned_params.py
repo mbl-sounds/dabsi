@@ -130,41 +130,107 @@ def main():
     rows = [
         _group("Signal and network"),
         _row("Filter length \\(L\\) [samples]", per_col(lambda e, v: _int(e["L"]))),
-        _row("Excitation length [samples]", per_col(lambda e, v: _int(e["scenario"]["nr_samples"]))),
+        _row(
+            "Excitation length [samples]",
+            per_col(lambda e, v: _int(e["scenario"]["nr_samples"])),
+        ),
         _row(
             "Sampling rate \\(f_s\\) [Hz]",
-            per_col(lambda e, v: _int(e["scenario"]["fs"]) if "fs" in e["scenario"] else None),
+            per_col(
+                lambda e, v: _int(e["scenario"]["fs"]) if "fs" in e["scenario"] else None
+            ),
         ),
         _row("Partitions", per_col(lambda e, v: _int(e["scenario"]["partitions"]))),
         _row("Partition amplitude", per_col(lambda e, v: PARTITION_AMPLITUDE)),
         _row("Nodes \\(M\\)", per_col(lambda e, v: _join(e["grid"]["M"]))),
-        _row("Receive neighbourhood \\(N_i\\) (incl. self)", per_col(lambda e, v: _join(e["grid"]["N_i"]))),
+        _row(
+            "Receive neighbourhood \\(N_i\\) (incl. self)",
+            per_col(lambda e, v: _join(e["grid"]["N_i"])),
+        ),
         _row("Graph", per_col(lambda e, v: "directed, random")),
-        _row("SNR [dB]", per_col(lambda e, v: f"\\({int(min(e['grid']['SNR']))}\\)--\\({int(max(e['grid']['SNR']))}\\)")),
-        _row("Noise", per_col(lambda e, v: "white Gaussian" if e["scenario"]["kind"] == "wgn" else "random PSD")),
+        _row(
+            "SNR [dB]",
+            per_col(
+                lambda e, v: f"\\({int(min(e['grid']['SNR']))}\\)--\\({int(max(e['grid']['SNR']))}\\)"
+            ),
+        ),
+        _row(
+            "Noise",
+            per_col(
+                lambda e, v: (
+                    "white Gaussian" if e["scenario"]["kind"] == "wgn" else "random PSD"
+                )
+            ),
+        ),
         _row("VAD threshold [dB]", per_col(lambda e, v: _int(VAD_THRESHOLD_DB))),
         _row("VAD smoothing [samples]", per_col(lambda e, v: _int(VAD_SMOOTHING))),
         _group("Room impulse responses"),
         _row("RIR generation", per_col(lambda e, v: RIR_SOURCE[e["scenario"]["kind"]])),
-        _row("Room size [m]", per_col(lambda e, v: uniform(e["scenario"]["roomsize"]) if is_room(e) else None)),
-        _row("Wall margin [m]", per_col(lambda e, v: _fmt(WALL_MARGIN_M) if is_room(e) else None)),
+        _row(
+            "Room size [m]",
+            per_col(
+                lambda e, v: uniform(e["scenario"]["roomsize"]) if is_room(e) else None
+            ),
+        ),
+        _row(
+            "Wall margin [m]",
+            per_col(lambda e, v: _fmt(WALL_MARGIN_M) if is_room(e) else None),
+        ),
         _row(
             "RIR perturbation [dB below channel]",
-            per_col(lambda e, v: _int(RIR_PERTURBATION_DB[e["scenario"]["kind"]]) if e["scenario"]["kind"] in RIR_PERTURBATION_DB else None),
+            per_col(
+                lambda e, v: (
+                    _int(RIR_PERTURBATION_DB[e["scenario"]["kind"]])
+                    if e["scenario"]["kind"] in RIR_PERTURBATION_DB
+                    else None
+                )
+            ),
         ),
-        _row("\\(\\text{RT}_{60}\\) [s]", per_col(lambda e, v: rt60_cell(e["scenario"].get("rt60"), e) if is_room(e) else None)),
-        _row("Prior rooms \\(N_{\\text{rooms}}\\)", per_col(lambda e, v: _int(prior_of(e, v)["n_rooms"]) if prior_of(e, v) else None)),
-        _row("Prior room size [m]", per_col(lambda e, v: uniform(prior_of(e, v)["roomsize"]) if prior_of(e, v) else None)),
-        _row("Prior \\(\\text{RT}_{60}\\) [s]", per_col(lambda e, v: rt60_cell(prior_of(e, v)["rt60"], e) if prior_of(e, v) else None)),
+        _row(
+            "\\(\\text{RT}_{60}\\) [s]",
+            per_col(
+                lambda e, v: (
+                    rt60_cell(e["scenario"].get("rt60"), e) if is_room(e) else None
+                )
+            ),
+        ),
+        _row(
+            "Prior rooms \\(N_{\\text{rooms}}\\)",
+            per_col(
+                lambda e, v: _int(prior_of(e, v)["n_rooms"]) if prior_of(e, v) else None
+            ),
+        ),
+        _row(
+            "Prior room size [m]",
+            per_col(
+                lambda e, v: (
+                    uniform(prior_of(e, v)["roomsize"]) if prior_of(e, v) else None
+                )
+            ),
+        ),
+        _row(
+            "Prior \\(\\text{RT}_{60}\\) [s]",
+            per_col(
+                lambda e, v: (
+                    rt60_cell(prior_of(e, v)["rt60"], e) if prior_of(e, v) else None
+                )
+            ),
+        ),
         _group("DABSI"),
         _row("\\(\\rho\\)", dabsi("rho")),
         _row("\\(\\mu\\)", dabsi("mu")),
         _row("\\(\\eta\\)", dabsi("eta")),
         _row("\\(\\lambda_0\\)", dabsi("lambd")),
         _row("Local iterations", per_col(lambda e, v: _int(e["algs"][v]["local_iters"]))),
-        _row("Distributed averaging", per_col(lambda e, v: "yes" if e["algs"][v]["da"] else "no")),
+        _row(
+            "Distributed averaging",
+            per_col(lambda e, v: "yes" if e["algs"][v]["da"] else "no"),
+        ),
         _row("GEV regularisation \\(\\varepsilon_{\\text{GEV}}\\)", dabsi("gev_reg")),
-        _row("GEV clipping \\(c_{\\text{GEV}}\\)", per_col(lambda e, v: _int(e["algs"][v]["gev_lim"]))),
+        _row(
+            "GEV clipping \\(c_{\\text{GEV}}\\)",
+            per_col(lambda e, v: _int(e["algs"][v]["gev_lim"])),
+        ),
         _row("BFGS tolerance", [_fmt(bfgs_tol)] * len(COLUMNS)),
         _group("Compared methods"),
         _row("\\(\\mu_{\\text{MCQN}}\\)", baseline("mcqn", "mu")),
@@ -179,7 +245,17 @@ def main():
         _row(
             "Frames per run",
             # common frame count of run_job in dbsi/experiments.py: mic length is nr_samples + L - 1
-            per_col(lambda e, v: _int(len(range(0, e["scenario"]["nr_samples"] + e["L"] - 1 - 4 * e["L"], e["L"])))),
+            per_col(
+                lambda e, v: _int(
+                    len(
+                        range(
+                            0,
+                            e["scenario"]["nr_samples"] + e["L"] - 1 - 4 * e["L"],
+                            e["L"],
+                        )
+                    )
+                )
+            ),
         ),
     ]
 
