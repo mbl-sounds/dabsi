@@ -163,7 +163,7 @@ EXPERIMENTS = {
         algs={
             "dabsi": _DABSI,
             **{
-                f"dsaawet_a{a:g}": dict(kind="dsaawet", alpha=a)
+                f"dsaawet_a{a:g}": dict(kind="dsaawet", alpha=a, tune=False)
                 for a in (1e-4, 1e-3, 1e-2, 1e-1, 1.0)
             },
         },
@@ -267,9 +267,26 @@ def job_id(j: dict) -> str:
     return "_".join(parts) + f"_run{j['run']:03d}"
 
 
+def point_key(job: dict) -> str:
+    """Grid point of a job (all grid axes, run index excluded); key of the tuned parameters."""
+    return json.dumps({k: v for k, v in sorted(job.items()) if k != "run"})
+
+
+def alg_spec(exp: dict, job: dict, name: str) -> dict:
+    """Algorithm spec for one job; tuned parameters of the job's grid point override the config."""
+    spec = exp["algs"][name]
+    if "tuned" not in exp:
+        return spec
+    pk = point_key(job)
+    if pk not in exp["tuned"]:
+        raise KeyError(
+            f"no tuned parameters for grid point {pk}; tune it or use --no-tuned"
+        )
+    return {**spec, **exp["tuned"][pk].get(name, {})}
+
+
 def _seed_key(j: dict) -> tuple:
-    point = json.dumps({k: v for k, v in sorted(j.items()) if k != "run"})
-    return (j["run"], zlib.crc32(point.encode()))
+    return (j["run"], zlib.crc32(point_key(j).encode()))
 
 
 @contextmanager
@@ -482,7 +499,7 @@ def _run_alg(name: str, spec: dict, exp: dict, scn, key: tuple, cache_dir: Path,
     from .harness import run_dabsi, run_reference
 
     kind, params = spec["kind"], {
-        k: v for k, v in spec.items() if k not in ("kind", "prior")
+        k: v for k, v in spec.items() if k not in ("kind", "prior", "tune")
     }
     if kind in ("dabsi", "dabsi_ref"):
         C = compute_prior(exp, spec.get("prior") if params["lambd"] else None, cache_dir)
@@ -536,14 +553,13 @@ def run_job(exp: dict, job: dict, out_dir: str, git: dict) -> tuple[str, float]:
 
     for name in todo:
         t1 = time.time()
-        mis, scale = _run_alg(
-            name, exp["algs"][name], exp, scn, key, Path(out_dir) / "_priors", T
-        )
+        spec = alg_spec(exp, job, name)
+        mis, scale = _run_alg(name, spec, exp, scn, key, Path(out_dir) / "_priors", T)
         sec = time.time() - t1
         meta = dict(
             job=job,
             alg=name,
-            spec=exp["algs"][name],
+            spec=spec,
             seed=exp["seed"],
             git=git,
             mic_snr_db=scn.mic_snr_db.tolist(),

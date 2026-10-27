@@ -5,12 +5,11 @@ separate tuning scenarios (own seed, short signals) for ``min_frames`` frames. T
 the mean misalignment [dB] over the second half of the frames (diverged = inf; a candidate that diverges on
 any scenario is dropped). The better half survives and is re-run for twice as many frames, until one
 candidate is left, the best one is unchanged and converged (score <= ``conv_db``), or ``max_frames`` is
-reached. The winners are stored in ``tuned/<experiment>.json`` and are applied automatically by
-``run_experiments.py`` (they overwrite the parameters of the experiment config; the resolved config is
-part of the manifest of the full run).
+reached. Tuning runs separately for every grid point (all grid axes); the winners are stored in
+``tuned/<experiment>.json`` under the point key and applied per job by ``alg_spec`` in ``run_experiments.py``.
+The tuned table is part of the manifest of the full run.
 
-Tuning is done once per problem setup (algorithm names carry e.g. the prior strength); parameters that
-define the experiment (lambda, prior, eta, ...) are not tuned.
+Parameters that define the experiment (lambda, prior, eta, ...) are not tuned.
 """
 
 from __future__ import annotations
@@ -24,7 +23,14 @@ from pathlib import Path
 
 import numpy as np
 
-from .experiments import _run_alg, _seed_key, make_jobs, make_scenario, precompute_priors
+from .experiments import (
+    _run_alg,
+    _seed_key,
+    make_jobs,
+    make_scenario,
+    point_key,
+    precompute_priors,
+)
 from .runner import _init_worker, git_info
 
 
@@ -117,12 +123,11 @@ def tune(
             "nr_samples": nr,
             "partitions": max(1, round(sc["partitions"] * nr / sc["nr_samples"])),
         },
-        "grid": {k: where.get(k, v[:1]) for k, v in grid.items()},
     }
-    jobs = make_jobs(texp)
+    points = [dict(zip(grid, v)) for v in itertools.product(*grid.values())]
+    points = [p for p in points if all(p[k] in v for k, v in where.items())]
     settings = dict(
-        L=texp["L"],
-        grid=texp["grid"],
+        L=L,
         runs=runs,
         min_frames=min_frames,
         max_frames=max_frames,
@@ -130,7 +135,7 @@ def tune(
         seed=exp["seed"],
     )
     log(
-        f"tuning {exp['name']} on {len(jobs)} scenarios, grid {texp['grid']}, frames {min_frames}..{max_frames}"
+        f"tuning {exp['name']}: {len(points)} grid points, frames {min_frames}..{max_frames}"
     )
 
     path = Path(tuned_path)
@@ -157,52 +162,71 @@ def tune(
         else None
     )
     try:
-        for name, spec in exp["algs"].items():
-            if (
-                (algs and name not in algs)
-                or spec["kind"] not in spaces
-                or name in tuned["params"]
-            ):
-                continue
-            space = spaces[spec["kind"]]
-            cands = [dict(zip(space, v)) for v in itertools.product(*space.values())]
-            alive, best_prev, T, hist = list(range(len(cands))), None, min_frames, []
-            while True:
-                sc_ = _evaluate(
-                    texp, jobs, name, spec, cands, alive, T, pool, processes, cache_dir
-                )
-                ranked = sorted(
-                    (i for i in alive if math.isfinite(sc_[i])), key=lambda i: sc_[i]
-                )
-                hist.append(
-                    dict(frames=T, scores={json.dumps(cands[i]): sc_[i] for i in alive})
-                )
-                if not ranked:
-                    log(
-                        f"  {name}: all {len(alive)} candidates diverged at {T} frames; not tuned"
-                    )
-                    break
-                best = ranked[0]
-                log(
-                    f"  {name}: {T:5d} frames, {len(alive):2d} candidates, best {cands[best]} at {sc_[best]:.1f} dB"
-                )
+        for point in points:
+            pk = point_key(point)
+            ptexp = {**texp, "grid": {k: [v] for k, v in point.items()}}
+            jobs = make_jobs(ptexp)
+            tuned["params"].setdefault(pk, {})
+            tuned["history"].setdefault(pk, {})
+            log(f"  {pk}: {len(jobs)} scenarios")
+            for name, spec in exp["algs"].items():
                 if (
-                    len(ranked) == 1
-                    or T >= max_frames
-                    or (best == best_prev and sc_[best] <= conv_db)
+                    (algs and name not in algs)
+                    or spec.get("tune") is False
+                    or spec["kind"] not in spaces
+                    or name in tuned["params"][pk]
                 ):
-                    tuned["params"][name] = cands[best]
-                    break
-                alive, best_prev, T = (
-                    ranked[: math.ceil(len(ranked) / 2)],
-                    best,
-                    min(2 * T, max_frames),
-                )
-            tuned["history"][name] = hist
-            path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = path.with_suffix(".tmp")
-            tmp.write_text(json.dumps(tuned, indent=1))
-            tmp.replace(path)
+                    continue
+                space = spaces[spec["kind"]]
+                cands = [dict(zip(space, v)) for v in itertools.product(*space.values())]
+                alive, best_prev, T, hist = list(range(len(cands))), None, min_frames, []
+                while True:
+                    sc_ = _evaluate(
+                        ptexp,
+                        jobs,
+                        name,
+                        spec,
+                        cands,
+                        alive,
+                        T,
+                        pool,
+                        processes,
+                        cache_dir,
+                    )
+                    ranked = sorted(
+                        (i for i in alive if math.isfinite(sc_[i])), key=lambda i: sc_[i]
+                    )
+                    hist.append(
+                        dict(
+                            frames=T, scores={json.dumps(cands[i]): sc_[i] for i in alive}
+                        )
+                    )
+                    if not ranked:
+                        log(
+                            f"    {name}: all {len(alive)} candidates diverged at {T} frames; not tuned"
+                        )
+                        break
+                    best = ranked[0]
+                    log(
+                        f"    {name}: {T:5d} frames, {len(alive):2d} candidates, best {cands[best]} at {sc_[best]:.1f} dB"
+                    )
+                    if (
+                        len(ranked) == 1
+                        or T >= max_frames
+                        or (best == best_prev and sc_[best] <= conv_db)
+                    ):
+                        tuned["params"][pk][name] = cands[best]
+                        break
+                    alive, best_prev, T = (
+                        ranked[: math.ceil(len(ranked) / 2)],
+                        best,
+                        min(2 * T, max_frames),
+                    )
+                tuned["history"][pk][name] = hist
+                path.parent.mkdir(parents=True, exist_ok=True)
+                tmp = path.with_suffix(".tmp")
+                tmp.write_text(json.dumps(tuned, indent=1))
+                tmp.replace(path)
     finally:
         if pool is not None:
             pool.shutdown(wait=False, cancel_futures=True)
@@ -210,6 +234,5 @@ def tune(
 
 
 def apply_tuned(exp: dict, tuned_path: str) -> dict:
-    """Copy of ``exp`` with the tuned parameters written into the algorithm specs."""
-    tuned = json.loads(Path(tuned_path).read_text())["params"]
-    return {**exp, "algs": {n: {**s, **tuned.get(n, {})} for n, s in exp["algs"].items()}}
+    """Copy of ``exp`` with the tuned parameters per grid point; ``alg_spec`` applies them per job."""
+    return {**exp, "tuned": json.loads(Path(tuned_path).read_text())["params"]}

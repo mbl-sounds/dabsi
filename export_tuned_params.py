@@ -84,6 +84,9 @@ def _row(label: str, cells: list, rule: str = "\\hline") -> str:
 def main():
     from dbsi.config import DABSIConfig
 
+    sys.exit(
+        "tuned values are per grid point now; this table needs a per-point layout first"
+    )
     resolved = {name: _resolved(name) for _, name, _ in COLUMNS}
     commits = sorted(
         {

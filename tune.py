@@ -44,7 +44,7 @@ def main():
     p.add_argument(
         "--where",
         nargs="*",
-        help="grid points to tune on, e.g. SNR=20,50 N_i=2 (default: first value of each axis)",
+        help="grid points to tune on, e.g. SNR=20,50 N_i=2 (default: every grid point)",
     )
     p.add_argument("--algs", nargs="*", help="only these algorithm names")
     p.add_argument("--runs", type=int, default=3, help="tuning scenarios per grid point")
