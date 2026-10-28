@@ -126,7 +126,7 @@ EXPERIMENTS = {
         runs=20,
         L=64,
         scenario=_ROOM,
-        grid=dict(M=[4], N_i=[2], SNR=[40, 20], signal=["white"]),
+        grid=dict(M=[4], N_i=[2], SNR=[40, 20], signal=["white", "speech"]),
         algs={
             "dabsi_noprior": {**_DABSI, "lambd": 0.0},
             "dabsi_matched": {**_DABSI, "lambd": 1e-5, "prior": _PRIOR},
