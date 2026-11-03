@@ -57,29 +57,24 @@ _WGN_ALGS = {
     "spmcqn": dict(kind="spmcqn", mu=0.1, eta=0.98, lambd=1e-6),
 }
 
-# simulated_rooms.py: baseline step sizes are tuned per lambda
-_ROOM_STEPS = {  # lambda: (mu_mcqn, mu_spmcqn, alpha_dgd, alpha_dsaawet)
-    0.0: (0.15, 0.05, 1e-6, 1e-4),
-    1e-5: (0.2, 0.1, 1e-5, 1e-3),
-    1e-4: (0.25, 0.15, 1e-4, 1e-2),
-}
 _PRIOR = dict(rt60=None, roomsize=(2, 6), n_rooms=2000)  # matches the generated scenarios
 
 
 def _room_algs(lambds, prior=_PRIOR) -> dict:
-    algs = {}
+    """DABSI per lambda; baselines do not use the prior, so they are defined once."""
+    # step sizes: lambda=1e-5 row of the paper runs; tuned values override them
+    algs = {
+        "dgd": dict(kind="dgd", alpha=1e-5),
+        "dsaawet": dict(kind="dsaawet", alpha=1e-3),
+        "mcqn": dict(kind="mcqn", mu=0.2, eta=0.98, lambd=1e-6),
+        "spmcqn": dict(kind="spmcqn", mu=0.1, eta=0.98, lambd=1e-6),
+    }
     for lam in lambds:
-        tag = f"_l{lam:g}"
-        mq, sp, dg, ds = _ROOM_STEPS[lam]
-        algs.update(
-            {
-                "dabsi" + tag: {**_DABSI, "lambd": lam, "prior": prior if lam else None},
-                "dgd" + tag: dict(kind="dgd", alpha=dg),
-                "dsaawet" + tag: dict(kind="dsaawet", alpha=ds),
-                "mcqn" + tag: dict(kind="mcqn", mu=mq, eta=0.98, lambd=1e-6),
-                "spmcqn" + tag: dict(kind="spmcqn", mu=sp, eta=0.98, lambd=1e-6),
-            }
-        )
+        algs[f"dabsi_l{lam:g}"] = {
+            **_DABSI,
+            "lambd": lam,
+            "prior": prior if lam else None,
+        }
     return algs
 
 

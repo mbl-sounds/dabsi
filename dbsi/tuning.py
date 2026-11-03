@@ -2,8 +2,8 @@
 
 For every tunable algorithm of an experiment (``SPACES``: step sizes etc.), all candidates are run on a few
 separate tuning scenarios (own seed, short signals) for ``min_frames`` frames. The score of a candidate is
-the mean misalignment [dB] over the second half of the frames (diverged = inf; a candidate that diverges on
-any scenario is dropped). The better half survives and is re-run for twice as many frames, until one
+the worst of ``TAIL_BLOCKS`` block means [dB] over the final quarter of the frames, NPM or NPMA per ``TUNE_METRIC`` (diverged = inf;
+a candidate that diverges on any scenario is dropped). The better half survives and is re-run for twice as many frames, until one
 candidate is left, the best one is unchanged and converged (score <= ``conv_db``), or ``max_frames`` is
 reached. Tuning runs separately for every grid point (all grid axes); the winners are stored in
 ``tuned/<experiment>.json`` under the point key and applied per job by ``alg_spec`` in ``run_experiments.py``.
@@ -39,31 +39,45 @@ def _r(v: float) -> float:
 
 
 _MU = [0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.6]
+# dsaawet is not tuned: its score is about 0 dB for every alpha, so the search carries no information
 SPACES = {
     "dabsi": dict(mu=[0.1, 0.2, 0.4, 0.6, 0.8], rho=[0.5, 1.0, 2.0]),
     "dgd": dict(alpha=[_r(v) for v in np.logspace(-7, -3, 9)]),
-    "dsaawet": dict(alpha=[_r(v) for v in np.logspace(-5, 0, 11)]),
     "mcqn": dict(mu=_MU),
     "spmcqn": dict(mu=_MU),
 }
+# spmcqn: global NPM mixes subproblems of different scale, so NPMA is scored
+TUNE_METRIC = {"spmcqn": "npma"}
+_METRIC_COL = {"npm": 0, "npma": 1, "npmm": 2}
+TRACE_BLOCKS = 25  # block means of the dB trace stored per candidate and round
+TAIL_BLOCKS = 4
 
 
-def _score_task(texp: dict, job: dict, cands: list, T: int, cache_dir: str) -> list:
-    """Scenario of ``job`` once, then all candidates ``(name, idx, spec)``; returns ``(idx, score_db)``."""
+def _score_task(
+    texp: dict, job: dict, cands: list, T: int, cache_dir: str, col: int
+) -> list:
+    """Scenario of ``job`` once, then all candidates ``(name, idx, spec)``; returns ``(idx, score_db, trace_db)``."""
     scn = make_scenario(texp, job)
     T = min(T, len(range(0, scn.noisy.shape[0] - 4 * texp["L"], texp["L"])))
     out = []
     for name, i, spec in cands:
         mis, _ = _run_alg(name, spec, texp, scn, _seed_key(job), Path(cache_dir), T)
         with np.errstate(divide="ignore", invalid="ignore"):
-            db = 20 * np.log10(np.asarray(mis[:, 0], dtype=float))
-        tail = db[len(db) // 2 :]
-        out.append((i, float(tail.mean()) if np.isfinite(tail).all() else math.inf))
+            db = 20 * np.log10(np.asarray(mis[:, col], dtype=float))
+        tail = db[3 * len(db) // 4 :]
+        blocks = [
+            float(b.mean()) for b in np.array_split(tail, min(TAIL_BLOCKS, len(tail)))
+        ]
+        score = max(blocks) if np.isfinite(tail).all() else math.inf
+        trace = [float(b.mean()) for b in np.array_split(db, min(TRACE_BLOCKS, len(db)))]
+        out.append((i, score, trace))
     return out
 
 
-def _evaluate(texp, jobs, name, spec, cands, idxs, T, pool, procs, cache_dir) -> dict:
-    """Mean score over the tuning scenarios for each candidate in ``idxs``."""
+def _evaluate(
+    texp, jobs, name, spec, cands, idxs, T, pool, procs, cache_dir, col
+) -> tuple:
+    """Mean score and mean dB trace over the tuning scenarios for each candidate in ``idxs``."""
     n_chunks = max(
         1, math.ceil(procs / len(jobs))
     )  # keep all processes busy with few scenarios
@@ -72,15 +86,19 @@ def _evaluate(texp, jobs, name, spec, cands, idxs, T, pool, procs, cache_dir) ->
         (j, [(name, i, {**spec, **cands[i]}) for i in ch]) for j in jobs for ch in chunks
     ]
     if pool is None:
-        results = [_score_task(texp, j, c, T, str(cache_dir)) for j, c in tasks]
+        results = [_score_task(texp, j, c, T, str(cache_dir), col) for j, c in tasks]
     else:
-        futs = [pool.submit(_score_task, texp, j, c, T, str(cache_dir)) for j, c in tasks]
+        futs = [
+            pool.submit(_score_task, texp, j, c, T, str(cache_dir), col) for j, c in tasks
+        ]
         results = [f.result() for f in futs]
     per = {i: [] for i in idxs}
     for r in results:
-        for i, s in r:
-            per[i].append(s)
-    return {i: float(np.mean(v)) for i, v in per.items()}
+        for i, s, tr in r:
+            per[i].append((s, tr))
+    scores = {i: float(np.mean([s for s, _ in v])) for i, v in per.items()}
+    traces = {i: np.mean([tr for _, tr in v], axis=0).tolist() for i, v in per.items()}
+    return scores, traces
 
 
 def tune(
@@ -133,6 +151,7 @@ def tune(
         max_frames=max_frames,
         conv_db=conv_db,
         seed=exp["seed"],
+        metric={k: TUNE_METRIC.get(k, "npm") for k in spaces},
     )
     log(
         f"tuning {exp['name']}: {len(points)} grid points, frames {min_frames}..{max_frames}"
@@ -180,8 +199,9 @@ def tune(
                 space = spaces[spec["kind"]]
                 cands = [dict(zip(space, v)) for v in itertools.product(*space.values())]
                 alive, best_prev, T, hist = list(range(len(cands))), None, min_frames, []
+                metric = TUNE_METRIC.get(spec["kind"], "npm")
                 while True:
-                    sc_ = _evaluate(
+                    sc_, tr_ = _evaluate(
                         ptexp,
                         jobs,
                         name,
@@ -192,13 +212,17 @@ def tune(
                         pool,
                         processes,
                         cache_dir,
+                        _METRIC_COL[metric],
                     )
                     ranked = sorted(
                         (i for i in alive if math.isfinite(sc_[i])), key=lambda i: sc_[i]
                     )
                     hist.append(
                         dict(
-                            frames=T, scores={json.dumps(cands[i]): sc_[i] for i in alive}
+                            frames=T,
+                            metric=metric,
+                            scores={json.dumps(cands[i]): sc_[i] for i in alive},
+                            traces={json.dumps(cands[i]): tr_[i] for i in alive},
                         )
                     )
                     if not ranked:

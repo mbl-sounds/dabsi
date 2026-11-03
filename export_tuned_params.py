@@ -107,8 +107,7 @@ def main():
         return per_col(lambda e, v: _fmt(e["algs"][v][key]))
 
     def baseline(alg: str, key: str) -> list:
-        # baseline names carry the same lambda tag as the DABSI variant ("" or "_l1e-05")
-        return per_col(lambda e, v: _fmt(e["algs"][alg + v[len("dabsi") :]][key]))
+        return per_col(lambda e, v: _fmt(e["algs"][alg][key]))
 
     def pair(a: str, b: str, key: str) -> list:
         """Value of two baselines in one cell each, shown as 'a / b' if they differ."""
