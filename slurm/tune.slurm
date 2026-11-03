@@ -3,7 +3,7 @@
 #SBATCH --partition=batch_sapphirerapids
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=96
+#SBATCH --cpus-per-task=24
 #SBATCH --time=24:00:00
 #
 # One-time parameter tuning on one node. Writes $CODE/tuned/<experiment>.json.
