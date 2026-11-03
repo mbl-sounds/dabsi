@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from dbsi.experiments import EXPERIMENTS, alg_spec, point_key
-from dbsi.tuning import apply_tuned, tune
+from dbsi.tuning import TRACE_BLOCKS, apply_tuned, tune
 
 
 def _job(snr):
@@ -53,3 +53,7 @@ def test_tune_resume_apply(tmp_path):
     with pytest.raises(KeyError):  # a grid point that was not tuned
         alg_spec(out, _job(40), "mcqn")
     assert np.isfinite(list(tuned["history"][lo]["dabsi"][0]["scores"].values())).any()
+    first = tuned["history"][lo]["dabsi"][0]
+    assert all(0 < len(t) <= TRACE_BLOCKS for t in first["traces"].values())
+    assert first["metric"] == "npm"
+    assert tuned["settings"]["metric"]["mcqn"] == "npm"
