@@ -13,9 +13,12 @@ __pycache__/
 
 # experiment outputs and external data
 .data/
+data/
 .librispeech
 .myriad
 work/
+logs/
+smoke/
 
 # generated paper tables and plots
 # tables/
