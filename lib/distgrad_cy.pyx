@@ -150,8 +150,9 @@ class DGD:
         self._transmitSignals()
         self._generateYs()
         self._distributedAveragingInit()
+        self._transmitDistributedAvergingEstimates()
         for _ in range(da_R):
-            self._distributedAveragingStep
+            self._distributedAveragingStep()
             self._transmitDistributedAvergingEstimates()
         self._updateEstimate()
         self._transmitEstimates()
@@ -196,6 +197,8 @@ class DGD:
 
     def _transmitDistributedAvergingEstimates(self) -> None:
         for node in self.nodes.values():
+            node.phi[node.receive_indices[node.id]] = node.phi_
+            node.psi[node.receive_indices[node.id]] = node.psi_
             for transmit in node.transmit:
                 transmit.phi[transmit.receive_indices[node.id]] = node.phi_
                 transmit.psi[transmit.receive_indices[node.id]] = node.psi_
