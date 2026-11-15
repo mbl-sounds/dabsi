@@ -186,7 +186,9 @@ def frame_vad(vad: np.ndarray, L: int, rule: str = "frame") -> np.ndarray:
     if rule == "center":
         return vad[starts + L]
     if rule == "frame":
-        csum = np.vstack([np.zeros((1, vad.shape[1]), dtype=np.int64), np.cumsum(vad, axis=0)])
+        csum = np.vstack(
+            [np.zeros((1, vad.shape[1]), dtype=np.int64), np.cumsum(vad, axis=0)]
+        )
         return (csum[starts + 2 * L] - csum[starts]) > 0
     raise ValueError(f"unknown vad rule {rule!r}")
 
