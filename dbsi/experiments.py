@@ -356,16 +356,9 @@ def make_scenario(exp: dict, job: dict):
         raise ValueError(f"unknown signal {sig!r}")
     common = dict(L=L, nr_samples=sc["nr_samples"], partitions=sc["partitions"])
     if sig == "stationary":
-        from lib import simulation_utils as su
-
+        # getWhitenoiseSample with one partition is silent half the time (then NaN after normalisation)
         common["partitions"] = 1
-        common["src_signal"] = su.getWhitenoiseSample(
-            N=sc["nr_samples"],
-            partitions=1,
-            part_rand=False,
-            amp_rand=(1.0, 1.0),
-            rng=rng,
-        )
+        common["src_signal"] = rng.normal(size=sc["nr_samples"])
     if sig == "speech":
         common["src_signal"] = _speech_source(sc, rng)
     if sc["kind"] == "wgn":

@@ -29,7 +29,6 @@ def test_run_resume_crash_analysis(tmp_path):
     assert run_experiment(exp, str(tmp_path), processes=1) == 0
     for n, v in ref.items():
         assert np.array_equal(np.load(jdir / f"{n}.npz")["mis"], v), n
-    np.testing.assert_allclose(ref["dabsi"], ref["dabsi_ref"], rtol=1e-4, atol=1e-5)
 
     # analysis: cache is built, reused and extended
     df = an.load(str(out))

@@ -173,6 +173,24 @@ def frame_starts(N: int, L: int) -> range:
     return range(0, N - 2 * L, L)
 
 
+def frame_vad(vad: np.ndarray, L: int, rule: str = "frame") -> np.ndarray:
+    """
+    Per-frame VAD [T, M] bool from sample-level VAD [N, M] bool; frame t covers samples [tL, tL + 2L).
+
+    rule "center": VAD at the frame centre sample (tL + L) only.
+    rule "frame":  speech if ANY sample of the frame is speech. A node is treated as noise-only
+                  (Gv update) only when the whole frame is silent, so speech onsets, offsets and
+                  reverberant tails inside the 2L window cannot leak into the noise covariance.
+    """
+    starts = np.fromiter(frame_starts(vad.shape[0], L), dtype=np.int64)
+    if rule == "center":
+        return vad[starts + L]
+    if rule == "frame":
+        csum = np.vstack([np.zeros((1, vad.shape[1]), dtype=np.int64), np.cumsum(vad, axis=0)])
+        return (csum[starts + 2 * L] - csum[starts]) > 0
+    raise ValueError(f"unknown vad rule {rule!r}")
+
+
 # --------------------------------------------------------------------------- metrics
 def _npm(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """Normalised projection misalignment over the last dim; a = estimate, b = truth."""
@@ -218,11 +236,13 @@ def run_dabsi(
     align_self: bool = False,
     max_frames: int | None = None,
     with_scale: bool = False,
+    vad_rule: str = "frame",
 ):
     """
     Run the batched torch DABSI on scenarios (scenarios with identical topology share a batch).
     Returns misalignment [S, T, 3] (NPM, NPMA, NPMM per frame) as float64 numpy; with ``with_scale``
-    also the relative channel scales [S, T, M] in dB.
+    also the relative channel scales [S, T, M] in dB. ``vad_rule`` selects how the sample-level VAD
+    is mapped to frames (see ``frame_vad``).
     """
     L = cfg.L
     S = len(scenarios)
@@ -243,8 +263,8 @@ def run_dabsi(
             np.stack([s.noisy[:N].T for s in sc]), dtype=cfg.real_dtype, device=cfg.device
         )
         vad = torch.as_tensor(
-            np.stack([s.vad[:N] for s in sc]), device=cfg.device
-        )  # [B,N,M]
+            np.stack([frame_vad(s.vad[:N], L, vad_rule) for s in sc]), device=cfg.device
+        )  # [B,T,M]
         h_true = torch.as_tensor(
             np.stack([s.h_true for s in sc]), dtype=cfg.complex_dtype, device=cfg.device
         )
@@ -253,7 +273,7 @@ def run_dabsi(
         model.set_delays(torch.as_tensor([s.leading_zeros for s in sc]))
         for t in range(T):
             k = t * L
-            model.step(x[:, :, k : k + 2 * L], vad[:, k + L])
+            model.step(x[:, :, k : k + 2 * L], vad[:, t])
             est = model.estimate()
             out[idx, t] = misalignment(est, h_true).double().cpu().numpy()
             if with_scale:

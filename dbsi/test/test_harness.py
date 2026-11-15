@@ -36,7 +36,7 @@ def test_wgn_old_vs_new(SNR):
     cfg = DABSIConfig(L=L, eta=0.98, rho=1.0, mu=0.4, lambd=0.0, da=True)
 
     ref = run_reference(scn, params, np.eye(L), max_frames=T)
-    new = run_dabsi(cfg, [scn], sigma_inv=np.eye(L), max_frames=T)[0]
+    new = run_dabsi(cfg, [scn], sigma_inv=np.eye(L), max_frames=T, vad_rule="center")[0]
     assert ref.shape == new.shape
     np.testing.assert_allclose(new, ref, rtol=1e-6, atol=1e-8)
 
