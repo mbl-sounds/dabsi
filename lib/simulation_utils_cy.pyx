@@ -143,7 +143,7 @@ def NPM(a: np.ndarray, b: np.ndarray) -> np.float64:
     """
     if b.shape[1] > 1:
         b = b.T.reshape(-1, 1)
-    e = b - (b.conj().T @ a) / (a.conj().T @ a) * a
+    e = b - (a.conj().T @ b) / (a.conj().T @ a) * a
     return np.linalg.norm(e) / np.linalg.norm(b)
 
 

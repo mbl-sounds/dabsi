@@ -196,7 +196,7 @@ def frame_vad(vad: np.ndarray, L: int, rule: str = "frame") -> np.ndarray:
 # --------------------------------------------------------------------------- metrics
 def _npm(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """Normalised projection misalignment over the last dim; a = estimate, b = truth."""
-    proj = (b.conj() * a).sum(-1, keepdim=True) / (a.conj() * a).sum(-1, keepdim=True)
+    proj = (a.conj() * b).sum(-1, keepdim=True) / (a.conj() * a).sum(-1, keepdim=True)
     e = b - proj * a
     return torch.linalg.vector_norm(e, dim=-1) / torch.linalg.vector_norm(b, dim=-1)
 

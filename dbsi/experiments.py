@@ -78,9 +78,24 @@ def _room_algs(lambds, prior=_PRIOR) -> dict:
     return algs
 
 
+def _mismatch_algs(lambds) -> dict:
+    """No-prior DABSI plus matched, slight, distinct and low-pass priors at each lambda."""
+    priors = {
+        "matched": _PRIOR,
+        "slight": {**_PRIOR, "roomsize": (2, 7)},
+        "distinct": {**_PRIOR, "roomsize": (8, 12)},
+        "lowpass": {**_PRIOR, "lowpass_hz": 250},
+    }
+    algs = {"dabsi_noprior": {**_DABSI, "lambd": 0.0}}
+    for pname, prior in priors.items():
+        for lam in lambds:
+            algs[f"dabsi_{pname}_l{lam:g}"] = {**_DABSI, "lambd": lam, "prior": prior}
+    return algs
+
+
 _WGN = dict(kind="wgn", nr_samples=500_000, partitions=400, fs=2000)
 _ROOM = dict(
-    kind="room", nr_samples=800_000, partitions=400, fs=2000, roomsize=(2, 6), rt60=None
+    kind="room", nr_samples=500_000, partitions=400, fs=2000, roomsize=(2, 6), rt60=None
 )
 
 EXPERIMENTS = {
@@ -110,7 +125,7 @@ EXPERIMENTS = {
         seed=0,
         runs=20,
         L=32,
-        scenario=_WGN,
+        scenario=dict(_WGN, nr_samples=300_000),
         grid=dict(M=[4, 8], N_i=[2, 4], SNR=[20], signal=["white"]),
         algs={"dabsi": _DABSI},
     ),
@@ -120,7 +135,7 @@ EXPERIMENTS = {
         seed=0,
         runs=20,
         L=64,
-        scenario=_ROOM,
+        scenario=dict(_ROOM, nr_samples=300_000),
         grid=dict(M=[4], N_i=[2], SNR=[40, 20], signal=["white", "speech"]),
         algs={
             "dabsi_noprior": {**_DABSI, "lambd": 0.0},
@@ -135,7 +150,22 @@ EXPERIMENTS = {
                 "lambd": 1e-5,
                 "prior": {**_PRIOR, "roomsize": (8, 12)},
             },
+            "dabsi_lowpass": {
+                **_DABSI,
+                "lambd": 1e-5,
+                "prior": {**_PRIOR, "lowpass_hz": 250},
+            },
         },
+    ),
+    # revision: prior mismatch sweep over lambda at L=128 (speech; room size and frequency response)
+    "prior_mismatch_sweep": dict(
+        name="prior_mismatch_sweep",
+        seed=0,
+        runs=20,
+        L=128,
+        scenario=_ROOM,
+        grid=dict(M=[4], N_i=[2], SNR=[40, 20], signal=["speech"]),
+        algs=_mismatch_algs([1e-3, 3e-3, 1e-2, 3e-2]),
     ),
     # revision: scalability in M with bounded degree (low priority, not part of the planned runs; untested for M > 8)
     "scalability": dict(
@@ -169,7 +199,7 @@ EXPERIMENTS = {
         seed=0,
         runs=20,
         L=64,
-        scenario=_ROOM,
+        scenario=dict(_ROOM, nr_samples=300_000),
         grid=dict(
             M=[4], N_i=[2], SNR=[30], signal=["white"], rt60=[0.08, 0.16, 0.32, 0.64]
         ),
@@ -385,6 +415,13 @@ def make_scenario(exp: dict, job: dict):
     )
 
 
+def _lowpass_mask(L: int, fs: int, fc: float, order: int = 6) -> np.ndarray:
+    """Bin-wise Butterworth low-pass for an L-point DFT, scaled to unit mean power."""
+    f = np.abs(np.fft.fftfreq(L, d=1 / fs))
+    H = 1 / np.sqrt(1 + (f / fc) ** (2 * order))
+    return H / np.sqrt(np.mean(H**2))
+
+
 def compute_prior(exp: dict, prior: dict | None, cache_dir: Path) -> np.ndarray:
     """Room-ensemble covariance C [L,L] (as in simulation.py), cached on disk. None -> identity."""
     L = exp["L"]
@@ -421,6 +458,8 @@ def compute_prior(exp: dict, prior: dict | None, cache_dir: Path) -> np.ndarray:
                 rt60=prior["rt60"],
             )
             rirs_f = np.fft.fft(su.removeInitialDelayFromRIRs(room.rir, L, False), axis=0)
+            if prior.get("lowpass_hz"):
+                rirs_f = rirs_f * _lowpass_mask(L, fs, prior["lowpass_hz"])[:, None]
             C += rirs_f @ rirs_f.conj().T / (prior["n_rooms"] * n_mics)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(

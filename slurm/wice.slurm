@@ -18,12 +18,18 @@ CODE=${CODE:-$VSC_DATA/dabsi}
 WORK=${WORK:-$VSC_DATA/dabsi/work}  # cwd: .librispeech and .myriad are resolved relative to it
 OUT=${OUT:-$VSC_DATA/dabsi/data}
 
+[[ -f "$VSC_DATA/dabsi/venv-$VSC_ARCH_LOCAL/bin/activate" ]] || { echo "venv missing: run slurm/setup_cluster.sh" >&2; exit 1; }
+ls "$CODE"/lib/*_cy*.so >/dev/null 2>&1 || { echo "Cython extensions not built: run slurm/setup_cluster.sh" >&2; exit 1; }
+
 module purge
 module load Python/3.14.2-GCCcore-15.2.0
 source "$VSC_DATA/dabsi/venv-$VSC_ARCH_LOCAL/bin/activate"
 
 mkdir -p "$WORK"
 cd "$WORK"
+for d in .librispeech .myriad; do
+    [[ -d "$d" ]] || { echo "missing $WORK/$d: copy the data (see slurm/setup_cluster.sh)" >&2; exit 1; }
+done
 python "$CODE/run_experiments.py" "$EXPERIMENT" --out "$OUT" \
     --processes "$SLURM_CPUS_PER_TASK" \
     --shard "$SLURM_ARRAY_TASK_ID/$SLURM_ARRAY_TASK_COUNT"

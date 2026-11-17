@@ -180,11 +180,12 @@ class DABSI:
         grad = Cx_x - sig4 * Cv_x
         if self.sigma_inv is not None:
             trCR = G.gram_trace(Gx, glay) - sig * G.gram_trace(Gv, glay)
+            # trCR is a difference and can turn negative; a negative weight would anti-regularize
             lam = (
                 cfg.lambd
                 * trCR
                 / (self.R_deg.view(1, M).to(self.rdt) ** 2 * self.tr_sigma_inv)
-            )
+            ).clamp_min(0.0)
             grad = grad + self._prior(x, lam)
         Bz = st.Bph.unsqueeze(2) * st.z
         grad = self._mask_slots(grad + st.u + cfg.rho * (x - Bz))
