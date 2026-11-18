@@ -167,6 +167,16 @@ EXPERIMENTS = {
         grid=dict(M=[4], N_i=[2], SNR=[40, 20], signal=["speech"]),
         algs=_mismatch_algs([1e-3, 3e-3, 1e-2, 3e-2]),
     ),
+    # revision: prior mismatch sweep at 2x signal length; lambda grid 3e-4 to 1e-2
+    "prior_mismatch_sweep_long": dict(
+        name="prior_mismatch_sweep_long",
+        seed=0,
+        runs=20,
+        L=128,
+        scenario=dict(_ROOM, nr_samples=1_000_000, partitions=800),
+        grid=dict(M=[4], N_i=[2], SNR=[40, 20], signal=["speech"]),
+        algs=_mismatch_algs([3e-4, 1e-3, 3e-3, 1e-2]),
+    ),
     # revision: scalability in M with bounded degree (low priority, not part of the planned runs; untested for M > 8)
     "scalability": dict(
         name="scalability",
