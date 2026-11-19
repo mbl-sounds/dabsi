@@ -160,19 +160,9 @@ EXPERIMENTS = {
             },
         },
     ),
-    # revision: prior mismatch sweep over lambda at L=128 (speech; room size and frequency response)
+    # revision: prior mismatch sweep at 2x signal length; lambda grid 3e-5 to 1e-2
     "prior_mismatch_sweep": dict(
         name="prior_mismatch_sweep",
-        seed=0,
-        runs=20,
-        L=128,
-        scenario=_ROOM,
-        grid=dict(M=[6], SNR=[40, 20], signal=["speech"]),
-        algs=_mismatch_algs([1e-3, 3e-3, 1e-2, 3e-2]),
-    ),
-    # revision: prior mismatch sweep at 2x signal length; lambda grid 3e-5 to 1e-2
-    "prior_mismatch_sweep_long": dict(
-        name="prior_mismatch_sweep_long",
         seed=0,
         runs=20,
         L=128,
