@@ -225,10 +225,9 @@ EXPERIMENTS = {
         scenario=dict(_WGN, nr_samples=300_000, partitions=240),
         grid=dict(M=[4], N_i=[2], SNR=[30], signal=["white", "stationary"]),
         algs={
-            "dabsi": _DABSI,
             **{
                 f"dsaawet_a{a:g}": dict(kind="dsaawet", alpha=a, tune=False)
-                for a in (1e-4, 1e-3, 1e-2, 1e-1, 1.0)
+                for a in (1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0)
             },
         },
     ),
