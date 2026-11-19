@@ -103,9 +103,7 @@ def _mismatch_algs(lambds) -> dict:
 def _measured_prior_algs(lambds) -> dict:
     """No-prior DABSI plus SAL-matched (RT60 2.1 s) and default priors at each lambda."""
     # default rt60 None resolves to 5L/fs = 0.32 s at L=128, fs=2000
-    return _prior_algs(
-        {"matched": {**_PRIOR, "rt60": 2.1}, "default": _PRIOR}, lambds
-    )
+    return _prior_algs({"matched": {**_PRIOR, "rt60": 2.1}, "default": _PRIOR}, lambds)
 
 
 _WGN = dict(kind="wgn", nr_samples=500_000, partitions=400, fs=2000)
