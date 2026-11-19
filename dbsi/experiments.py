@@ -180,7 +180,7 @@ EXPERIMENTS = {
         grid=dict(M=[4], N_i=[2], SNR=[40, 20], signal=["speech"]),
         algs=_mismatch_algs([1e-3, 3e-3, 1e-2, 3e-2]),
     ),
-    # revision: prior mismatch sweep at 2x signal length; lambda grid 3e-4 to 1e-2
+    # revision: prior mismatch sweep at 2x signal length; lambda grid 3e-5 to 1e-2
     "prior_mismatch_sweep_long": dict(
         name="prior_mismatch_sweep_long",
         seed=0,
@@ -188,7 +188,7 @@ EXPERIMENTS = {
         L=128,
         scenario=dict(_ROOM, nr_samples=1_000_000, partitions=800),
         grid=dict(M=[4], N_i=[2], SNR=[40, 20], signal=["speech"]),
-        algs=_mismatch_algs([3e-4, 1e-3, 3e-3, 1e-2]),
+        algs=_mismatch_algs([3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2]),
     ),
     # revision: measured SAL RIRs (RT60 2.1 s), matched vs default prior; RIRs are truncated to L taps
     "measured_prior_sweep": dict(
@@ -204,7 +204,7 @@ EXPERIMENTS = {
             myriad_path=".myriad",
         ),
         grid=dict(M=[4], N_i=[2], SNR=[40, 20], signal=["speech"]),
-        algs=_measured_prior_algs([3e-4, 1e-3, 3e-3, 1e-2]),
+        algs=_measured_prior_algs([3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2]),
     ),
     # revision: scalability in M with bounded degree (low priority, not part of the planned runs; untested for M > 8)
     "scalability": dict(
