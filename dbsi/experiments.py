@@ -78,19 +78,34 @@ def _room_algs(lambds, prior=_PRIOR) -> dict:
     return algs
 
 
-def _mismatch_algs(lambds) -> dict:
-    """No-prior DABSI plus matched, slight, distinct and low-pass priors at each lambda."""
-    priors = {
-        "matched": _PRIOR,
-        "slight": {**_PRIOR, "roomsize": (2, 7)},
-        "distinct": {**_PRIOR, "roomsize": (8, 12)},
-        "lowpass": {**_PRIOR, "lowpass_hz": 250},
-    }
+def _prior_algs(priors: dict, lambds) -> dict:
+    """No-prior DABSI plus one DABSI per named prior and lambda."""
     algs = {"dabsi_noprior": {**_DABSI, "lambd": 0.0}}
     for pname, prior in priors.items():
         for lam in lambds:
             algs[f"dabsi_{pname}_l{lam:g}"] = {**_DABSI, "lambd": lam, "prior": prior}
     return algs
+
+
+def _mismatch_algs(lambds) -> dict:
+    """No-prior DABSI plus matched, slight, distinct and low-pass priors at each lambda."""
+    return _prior_algs(
+        {
+            "matched": _PRIOR,
+            "slight": {**_PRIOR, "roomsize": (2, 7)},
+            "distinct": {**_PRIOR, "roomsize": (8, 12)},
+            "lowpass": {**_PRIOR, "lowpass_hz": 250},
+        },
+        lambds,
+    )
+
+
+def _measured_prior_algs(lambds) -> dict:
+    """No-prior DABSI plus SAL-matched (RT60 2.1 s) and default priors at each lambda."""
+    # default rt60 None resolves to 5L/fs = 0.32 s at L=128, fs=2000
+    return _prior_algs(
+        {"matched": {**_PRIOR, "rt60": 2.1}, "default": _PRIOR}, lambds
+    )
 
 
 _WGN = dict(kind="wgn", nr_samples=500_000, partitions=400, fs=2000)
@@ -176,6 +191,22 @@ EXPERIMENTS = {
         scenario=dict(_ROOM, nr_samples=1_000_000, partitions=800),
         grid=dict(M=[4], N_i=[2], SNR=[40, 20], signal=["speech"]),
         algs=_mismatch_algs([3e-4, 1e-3, 3e-3, 1e-2]),
+    ),
+    # revision: measured SAL RIRs (RT60 2.1 s), matched vs default prior; RIRs are truncated to L taps
+    "measured_prior_sweep": dict(
+        name="measured_prior_sweep",
+        seed=0,
+        runs=20,
+        L=128,
+        scenario=dict(
+            kind="meas",
+            nr_samples=1_000_000,
+            partitions=800,
+            fs=2000,
+            myriad_path=".myriad",
+        ),
+        grid=dict(M=[4], N_i=[2], SNR=[40, 20], signal=["speech"]),
+        algs=_measured_prior_algs([3e-4, 1e-3, 3e-3, 1e-2]),
     ),
     # revision: scalability in M with bounded degree (low priority, not part of the planned runs; untested for M > 8)
     "scalability": dict(
