@@ -8,13 +8,13 @@ from dbsi.tuning import TRACE_BLOCKS, apply_tuned, tune
 
 
 def _job(snr):
-    return dict(run=0, M=3, N_i=2, SNR=snr, signal="white")
+    return dict(run=0, M=3, SNR=snr, signal="white")
 
 
 def test_tune_resume_apply(tmp_path):
     exp = dict(EXPERIMENTS["wgn_smoke"])
     exp["algs"] = {k: exp["algs"][k] for k in ("dabsi", "dgd", "mcqn")}
-    exp["grid"] = dict(M=[3], N_i=[2], SNR=[20, 30], signal=["white"])
+    exp["grid"] = dict(M=[3], SNR=[20, 30], signal=["white"])
     spaces = dict(
         dabsi=dict(mu=[0.1, 0.4]),
         dgd=dict(alpha=[1e-7, 1e-6, 1e-3]),

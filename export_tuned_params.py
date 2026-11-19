@@ -145,11 +145,7 @@ def main():
         _row("Partitions", per_col(lambda e, v: _int(e["scenario"]["partitions"]))),
         _row("Partition amplitude", per_col(lambda e, v: PARTITION_AMPLITUDE)),
         _row("Nodes \\(M\\)", per_col(lambda e, v: _join(e["grid"]["M"]))),
-        _row(
-            "Receive neighbourhood \\(N_i\\) (incl. self)",
-            per_col(lambda e, v: _join(e["grid"]["N_i"])),
-        ),
-        _row("Graph", per_col(lambda e, v: "directed, random")),
+        _row("Graph", per_col(lambda e, v: "directed ring, self loops")),
         _row(
             "SNR [dB]",
             per_col(

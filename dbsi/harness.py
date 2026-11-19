@@ -15,6 +15,14 @@ from .config import DABSIConfig
 from .dabsi import DABSI
 from .graph import build_graph_layout
 
+# Legacy graph (discarded, see ring_edges); N_i does not affect the generated RIRs.
+_LIB_N_I = 2
+
+
+def ring_edges(M: int) -> list[tuple[int, int]]:
+    """Directed ring i -> i+1 (mod M) with self loops, the topology of all experiments."""
+    return [(i, i) for i in range(M)] + [(i, (i + 1) % M) for i in range(M)]
+
 
 # --------------------------------------------------------------------------- scenario
 @dataclass
@@ -45,7 +53,6 @@ class Scenario:
 def generate_wgn_scenario(
     rng: np.random.Generator,
     M: int,
-    N_i: int,
     SNR: float,
     L: int = 64,
     nr_samples: int = 500_000,
@@ -69,8 +76,8 @@ def generate_wgn_scenario(
         )
     src_signal = src_signal / np.var(src_signal) ** 0.5 * 0.1
 
-    rirs_f, leading_zeros, mic, graph = su.signalToWGN(
-        src_signal, nr_samples, [{}], L, M, N_i, rng
+    rirs_f, leading_zeros, mic, _ = su.signalToWGN(
+        src_signal, nr_samples, [{}], L, M, _LIB_N_I, rng
     )
     vad = su.getVADFromCleanSignal(mic, threshold=-60, smoothing_length=10)
     noise = su.getNoiseFromSNR(mic, vad, SNR, M, L, alpha=1.0, ir_type="room", rng=rng)
@@ -80,7 +87,7 @@ def generate_wgn_scenario(
         vad=np.asarray(vad, dtype=bool),
         rirs_f=rirs_f[0],
         leading_zeros=[int(z) for z in leading_zeros[0]],
-        edges=[tuple(map(int, e)) for e in graph.edges],
+        edges=ring_edges(M),
         mic_snr_db=mic_snr_db,
         L=L,
     )
@@ -89,7 +96,6 @@ def generate_wgn_scenario(
 def generate_room_scenario(
     rng: np.random.Generator,
     M: int,
-    N_i: int,
     SNR: float,
     L: int = 64,
     nr_samples: int = 800_000,
@@ -110,8 +116,17 @@ def generate_room_scenario(
             amp_rand=(0.5, 1.0),
             rng=rng,
         )
-    rirs_f, leading_zeros, mic, graph = su.signalToRoom(
-        src_signal, nr_samples, [{}], L, M, N_i, fs, tuple(roomsize), rng, rt60=rt60
+    rirs_f, leading_zeros, mic, _ = su.signalToRoom(
+        src_signal,
+        nr_samples,
+        [{}],
+        L,
+        M,
+        _LIB_N_I,
+        fs,
+        tuple(roomsize),
+        rng,
+        rt60=rt60,
     )
     vad = su.getVADFromCleanSignal(mic, threshold=-60, smoothing_length=10)
     noise = su.getNoiseFromSNR(mic, vad, SNR, M, L, alpha=1.0, ir_type="room", rng=rng)
@@ -121,7 +136,7 @@ def generate_room_scenario(
         vad=np.asarray(vad, dtype=bool),
         rirs_f=rirs_f[0],
         leading_zeros=[int(z) for z in leading_zeros[0]],
-        edges=[tuple(map(int, e)) for e in graph.edges],
+        edges=ring_edges(M),
         mic_snr_db=mic_snr_db,
         L=L,
     )
@@ -130,7 +145,6 @@ def generate_room_scenario(
 def generate_meas_scenario(
     rng: np.random.Generator,
     M: int,
-    N_i: int,
     SNR: float,
     L: int = 64,
     nr_samples: int = 800_000,
@@ -151,8 +165,8 @@ def generate_meas_scenario(
             rng=rng,
         )
     src_signal = src_signal / np.var(src_signal) ** 0.5 * 0.1
-    rirs_f, leading_zeros, mic, graph = su.signalToMeas(
-        src_signal, nr_samples, [{}], L, N_i, fs, M - 4, myriad_path, rng
+    rirs_f, leading_zeros, mic, _ = su.signalToMeas(
+        src_signal, nr_samples, [{}], L, _LIB_N_I, fs, M - 4, myriad_path, rng
     )
     vad = su.getVADFromCleanSignal(mic, threshold=-60, smoothing_length=10)
     noise = su.getNoiseFromSNR(mic, vad, SNR, M, L, alpha=1.0, ir_type="room", rng=rng)
@@ -162,7 +176,7 @@ def generate_meas_scenario(
         vad=np.asarray(vad, dtype=bool),
         rirs_f=rirs_f[0],
         leading_zeros=[int(z) for z in leading_zeros[0]],
-        edges=[tuple(map(int, e)) for e in graph.edges],
+        edges=ring_edges(M),
         mic_snr_db=mic_snr_db,
         L=L,
     )

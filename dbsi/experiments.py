@@ -3,7 +3,7 @@
 An experiment is a plain JSON-serialisable dict:
 
     name, seed, runs, L, scenario (kind wgn|room, nr_samples, partitions, fs, roomsize, rt60),
-    grid (scenario parameters M, N_i, SNR, signal, optionally rt60), algs (name -> spec).
+    grid (scenario parameters M, SNR, signal, optionally rt60), algs (name -> spec).
 
 One *job* = one scenario realisation (run + one grid point); all algorithms of the experiment are
 evaluated on exactly that realisation. Every job is seeded from
@@ -119,7 +119,7 @@ EXPERIMENTS = {
         runs=20,
         L=128,
         scenario=_WGN,
-        grid=dict(M=[4], N_i=[2, 4], SNR=[50, 40, 30, 20], signal=["white", "speech"]),
+        grid=dict(M=[6], SNR=[50, 40, 30, 20], signal=["white", "speech"]),
         algs=_WGN_ALGS,
     ),
     # paper: simulated shoebox rooms, three prior strengths (white source; speech needs LibriSpeech)
@@ -129,18 +129,8 @@ EXPERIMENTS = {
         runs=20,
         L=128,
         scenario=_ROOM,
-        grid=dict(M=[4], N_i=[2], SNR=[50, 40, 30, 20], signal=["white", "speech"]),
+        grid=dict(M=[6], SNR=[50, 40, 30, 20], signal=["white", "speech"]),
         algs=_room_algs([0.0, 1e-5, 1e-4]),
-    ),
-    # paper: topology density ablation (proposed algorithm only, no prior)
-    "topology": dict(
-        name="topology",
-        seed=0,
-        runs=20,
-        L=32,
-        scenario=dict(_WGN, nr_samples=300_000),
-        grid=dict(M=[4, 8], N_i=[2, 4], SNR=[20], signal=["white"]),
-        algs={"dabsi": _DABSI},
     ),
     # revision: prior mismatch by room size (matched / slight / distinct / none)
     "prior_mismatch": dict(
@@ -149,7 +139,7 @@ EXPERIMENTS = {
         runs=20,
         L=64,
         scenario=dict(_ROOM, nr_samples=300_000),
-        grid=dict(M=[4], N_i=[2], SNR=[40, 20], signal=["white", "speech"]),
+        grid=dict(M=[6], SNR=[40, 20], signal=["white", "speech"]),
         algs={
             "dabsi_noprior": {**_DABSI, "lambd": 0.0},
             "dabsi_matched": {**_DABSI, "lambd": 1e-5, "prior": _PRIOR},
@@ -177,7 +167,7 @@ EXPERIMENTS = {
         runs=20,
         L=128,
         scenario=_ROOM,
-        grid=dict(M=[4], N_i=[2], SNR=[40, 20], signal=["speech"]),
+        grid=dict(M=[6], SNR=[40, 20], signal=["speech"]),
         algs=_mismatch_algs([1e-3, 3e-3, 1e-2, 3e-2]),
     ),
     # revision: prior mismatch sweep at 2x signal length; lambda grid 3e-5 to 1e-2
@@ -187,7 +177,7 @@ EXPERIMENTS = {
         runs=20,
         L=128,
         scenario=dict(_ROOM, nr_samples=1_000_000, partitions=800),
-        grid=dict(M=[4], N_i=[2], SNR=[40, 20], signal=["speech"]),
+        grid=dict(M=[6], SNR=[40, 20], signal=["speech"]),
         algs=_mismatch_algs([3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2]),
     ),
     # revision: measured SAL RIRs (RT60 2.1 s), matched vs default prior; RIRs are truncated to L taps
@@ -203,7 +193,7 @@ EXPERIMENTS = {
             fs=2000,
             myriad_path=".myriad",
         ),
-        grid=dict(M=[4], N_i=[2], SNR=[40, 20], signal=["speech"]),
+        grid=dict(M=[6], SNR=[40, 20], signal=["speech"]),
         algs=_measured_prior_algs([3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2]),
     ),
     # revision: scalability in M with bounded degree (low priority, not part of the planned runs; untested for M > 8)
@@ -213,7 +203,7 @@ EXPERIMENTS = {
         runs=10,
         L=64,
         scenario=dict(_WGN, nr_samples=300_000, partitions=240),
-        grid=dict(M=[4, 8, 16, 32], N_i=[2], SNR=[30], signal=["white"]),
+        grid=dict(M=[4, 8, 16, 32], SNR=[30], signal=["white"]),
         algs={k: _WGN_ALGS[k] for k in ("dabsi", "dgd", "dsaawet", "spmcqn")},
     ),
     # revision: DSAAWET step size sweep, stationary vs non-stationary white source
@@ -223,7 +213,7 @@ EXPERIMENTS = {
         runs=20,
         L=64,
         scenario=dict(_WGN, nr_samples=300_000, partitions=240),
-        grid=dict(M=[4], N_i=[2], SNR=[30], signal=["white", "stationary"]),
+        grid=dict(M=[6], SNR=[30], signal=["white", "stationary"]),
         algs={
             **{
                 f"dsaawet_a{a:g}": dict(kind="dsaawet", alpha=a, tune=False)
@@ -238,7 +228,7 @@ EXPERIMENTS = {
         runs=20,
         L=128,
         scenario=_ROOM,
-        grid=dict(M=[4], N_i=[2], SNR=[30], signal=["white", "stationary"]),
+        grid=dict(M=[6], SNR=[30], signal=["white", "stationary"]),
         algs={
             f"dsaawet_a{a:g}": dict(kind="dsaawet", alpha=a, tune=False)
             for a in (1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0)
@@ -252,7 +242,7 @@ EXPERIMENTS = {
         L=64,
         scenario=dict(_ROOM, nr_samples=300_000),
         grid=dict(
-            M=[4], N_i=[2], SNR=[30], signal=["white"], rt60=[0.08, 0.16, 0.32, 0.64]
+            M=[6], SNR=[30], signal=["white"], rt60=[0.08, 0.16, 0.32, 0.64]
         ),
         algs=_room_algs([0.0]),
     ),
@@ -269,7 +259,7 @@ EXPERIMENTS = {
             fs=2000,
             myriad_path=".myriad",
         ),
-        grid=dict(M=[4], N_i=[2], SNR=[50, 40, 30, 20], signal=["white", "speech"]),
+        grid=dict(M=[6], SNR=[50, 40, 30, 20], signal=["white", "speech"]),
         algs=_room_algs([0.0, 1e-5]),
     ),
     "meas_smoke": dict(
@@ -280,7 +270,7 @@ EXPERIMENTS = {
         scenario=dict(
             kind="meas", nr_samples=16 * 120, partitions=4, fs=500, myriad_path=".myriad"
         ),
-        grid=dict(M=[4], N_i=[2], SNR=[20], signal=["white"]),
+        grid=dict(M=[4], SNR=[20], signal=["white"]),
         algs={
             "dabsi": {
                 **_DABSI,
@@ -297,7 +287,7 @@ EXPERIMENTS = {
         runs=2,
         L=16,
         scenario=dict(kind="wgn", nr_samples=16 * 120, partitions=4, fs=500),
-        grid=dict(M=[3], N_i=[2], SNR=[20], signal=["white"]),
+        grid=dict(M=[3], SNR=[20], signal=["white"]),
         algs={**_WGN_ALGS, "dabsi_ref": {**_DABSI, "kind": "dabsi_ref"}},
     ),
     "room_smoke": dict(
@@ -313,7 +303,7 @@ EXPERIMENTS = {
             roomsize=(2, 6),
             rt60=None,
         ),
-        grid=dict(M=[3], N_i=[2], SNR=[20], signal=["white", "stationary"]),
+        grid=dict(M=[3], SNR=[20], signal=["white", "stationary"]),
         algs={
             "dabsi": {
                 **_DABSI,
@@ -443,12 +433,11 @@ def make_scenario(exp: dict, job: dict):
     if sig == "speech":
         common["src_signal"] = _speech_source(sc, rng)
     if sc["kind"] == "wgn":
-        return generate_wgn_scenario(rng, job["M"], job["N_i"], job["SNR"], **common)
+        return generate_wgn_scenario(rng, job["M"], job["SNR"], **common)
     if sc["kind"] == "meas":
         return generate_meas_scenario(
             rng,
             job["M"],
-            job["N_i"],
             job["SNR"],
             fs=sc["fs"],
             myriad_path=sc["myriad_path"],
@@ -457,7 +446,6 @@ def make_scenario(exp: dict, job: dict):
     return generate_room_scenario(
         rng,
         job["M"],
-        job["N_i"],
         job["SNR"],
         fs=sc["fs"],
         roomsize=sc["roomsize"],

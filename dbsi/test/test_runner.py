@@ -71,6 +71,6 @@ def test_speech_scenario():
         pytest.skip("LibriSpeech not available in the working directory")
     exp = dict(EXPERIMENTS["wgn_smoke"])
     exp["scenario"] = dict(exp["scenario"], nr_samples=20_000)
-    scn = make_scenario(exp, dict(run=0, M=3, N_i=2, SNR=20, signal="speech"))
+    scn = make_scenario(exp, dict(run=0, M=3, SNR=20, signal="speech"))
     assert scn.noisy.shape[1] == 3
     assert np.isfinite(scn.noisy).all()
