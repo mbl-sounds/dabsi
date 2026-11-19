@@ -231,6 +231,19 @@ EXPERIMENTS = {
             },
         },
     ),
+    # revision: DSAAWET step size sweep on simulated shoebox rooms (L=128), white vs stationary
+    "dsaawet_sweep_rooms": dict(
+        name="dsaawet_sweep_rooms",
+        seed=0,
+        runs=20,
+        L=128,
+        scenario=_ROOM,
+        grid=dict(M=[4], N_i=[2], SNR=[30], signal=["white", "stationary"]),
+        algs={
+            f"dsaawet_a{a:g}": dict(kind="dsaawet", alpha=a, tune=False)
+            for a in (1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0)
+        },
+    ),
     # revision: RT60 sensitivity (shoebox rooms)
     "rt60_sensitivity": dict(
         name="rt60_sensitivity",
