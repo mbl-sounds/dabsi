@@ -87,9 +87,7 @@ def test_misalignment_of_real_signals_matches_their_dfts():
 def test_wgn_old_vs_new(SNR):
     rng = np.random.default_rng(3)
     L, M, T = 16, 4, 30
-    scn = generate_wgn_scenario(
-        rng, M, SNR, L=L, nr_samples=(T + 3) * L, partitions=10
-    )
+    scn = generate_wgn_scenario(rng, M, SNR, L=L, nr_samples=(T + 3) * L, partitions=10)
     params = dict(rho=1.0, mu=0.4, eta=0.98, lambd=0.0, gev_reg=1e-9, gev_lim=4.0)
     cfg = DABSIConfig(L=L, eta=0.98, rho=1.0, mu=0.4, lambd=0.0, da=True)
 

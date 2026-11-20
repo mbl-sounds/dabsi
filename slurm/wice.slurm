@@ -32,4 +32,5 @@ for d in .librispeech .myriad; do
 done
 python "$CODE/run_experiments.py" "$EXPERIMENT" --out "$OUT" \
     --processes "$SLURM_CPUS_PER_TASK" \
-    --shard "$SLURM_ARRAY_TASK_ID/$SLURM_ARRAY_TASK_COUNT"
+    --shard "$SLURM_ARRAY_TASK_ID/$SLURM_ARRAY_TASK_COUNT" \
+    ${ALGS:+--algs $ALGS}
