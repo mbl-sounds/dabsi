@@ -40,9 +40,19 @@ def main():
     p.add_argument(
         "--no-tuned", action="store_true", help="ignore tuned/<experiment>.json"
     )
+    p.add_argument(
+        "--algs",
+        nargs="*",
+        help="only these algorithm names (use its own --out: the manifest records them)",
+    )
     a = p.parse_args()
 
     exp = dict(EXPERIMENTS[a.experiment])
+    if a.algs:
+        unknown = set(a.algs) - set(exp["algs"])
+        if unknown:
+            p.error(f"unknown algorithms: {sorted(unknown)}")
+        exp["algs"] = {k: v for k, v in exp["algs"].items() if k in a.algs}
     tuned = Path(__file__).resolve().parent / "tuned" / f"{a.experiment}.json"
     if tuned.exists() and not a.no_tuned:
         from dbsi.tuning import apply_tuned

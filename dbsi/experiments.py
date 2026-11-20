@@ -108,7 +108,7 @@ def _measured_prior_algs(lambds) -> dict:
 
 _WGN = dict(kind="wgn", nr_samples=500_000, partitions=400, fs=2000)
 _ROOM = dict(
-    kind="room", nr_samples=500_000, partitions=400, fs=2000, roomsize=(2, 6), rt60=None
+    kind="room", nr_samples=1_000_000, partitions=800, fs=2000, roomsize=(2, 6), rt60=None
 )
 
 EXPERIMENTS = {
@@ -125,12 +125,12 @@ EXPERIMENTS = {
     # paper: simulated shoebox rooms, three prior strengths (white source; speech needs LibriSpeech)
     "simulated_rooms": dict(
         name="simulated_rooms",
-        seed=0,
+        seed=1,
         runs=20,
         L=128,
         scenario=_ROOM,
         grid=dict(M=[6], SNR=[50, 40, 30, 20], signal=["white", "speech"]),
-        algs=_room_algs([0.0, 1e-5, 1e-4]),
+        algs=_room_algs([0.0]),
     ),
     # revision: prior mismatch by room size (matched / slight / distinct / none)
     "prior_mismatch": dict(
@@ -189,9 +189,9 @@ EXPERIMENTS = {
     # revision: scalability in M with bounded degree (low priority, not part of the planned runs; untested for M > 8)
     "scalability": dict(
         name="scalability",
-        seed=0,
+        seed=1,
         runs=10,
-        L=64,
+        L=128,
         scenario=dict(_WGN, nr_samples=300_000, partitions=240),
         grid=dict(M=[4, 8, 16, 32], SNR=[30], signal=["white"]),
         algs={k: _WGN_ALGS[k] for k in ("dabsi", "dgd", "dsaawet", "spmcqn")},
@@ -231,9 +231,7 @@ EXPERIMENTS = {
         runs=20,
         L=64,
         scenario=dict(_ROOM, nr_samples=300_000),
-        grid=dict(
-            M=[6], SNR=[30], signal=["white"], rt60=[0.08, 0.16, 0.32, 0.64]
-        ),
+        grid=dict(M=[6], SNR=[30], signal=["white"], rt60=[0.08, 0.16, 0.32, 0.64]),
         algs=_room_algs([0.0]),
     ),
     # revision: measured RIRs (MYRiAD, hearing-aid mics); prior from the simulated-room ensemble
@@ -244,13 +242,11 @@ EXPERIMENTS = {
         L=128,
         scenario=dict(
             kind="meas",
-            nr_samples=500_000,
-            partitions=400,
             fs=2000,
             myriad_path=".myriad",
         ),
         grid=dict(M=[6], SNR=[50, 40, 30, 20], signal=["white", "speech"]),
-        algs=_room_algs([0.0, 1e-5]),
+        algs=_room_algs([0.0]),
     ),
     "meas_smoke": dict(
         name="meas_smoke",
