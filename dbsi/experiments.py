@@ -186,15 +186,15 @@ EXPERIMENTS = {
         grid=dict(M=[6], SNR=[40, 20], signal=["speech"]),
         algs=_measured_prior_algs([3e-5, 1e-4, 3e-4, 1e-3, 3e-3, 1e-2]),
     ),
-    # revision: scalability in M with bounded degree (low priority, not part of the planned runs; untested for M > 8)
+    # revision: scalability in M and N_i on simulated shoebox rooms
     "scalability": dict(
         name="scalability",
         seed=1,
         runs=10,
         L=128,
-        scenario=dict(_WGN, nr_samples=300_000, partitions=240),
-        grid=dict(M=[4, 8, 16, 32], SNR=[30], signal=["white"]),
-        algs={k: _WGN_ALGS[k] for k in ("dabsi", "dgd", "dsaawet", "spmcqn")},
+        scenario=_ROOM,
+        grid=dict(M=[6, 8, 10, 12], N_i=[2, 3, 4], SNR=[30], signal=["white"]),
+        algs={"dabsi": _WGN_ALGS["dabsi"]},
     ),
     # revision: DSAAWET step size sweep, stationary vs non-stationary white source
     "dsaawet_sweep": dict(
@@ -411,7 +411,12 @@ def make_scenario(exp: dict, job: dict):
     sig = job.get("signal", "white")
     if sig not in ("white", "stationary", "speech"):
         raise ValueError(f"unknown signal {sig!r}")
-    common = dict(L=L, nr_samples=sc["nr_samples"], partitions=sc["partitions"])
+    common = dict(
+        L=L,
+        nr_samples=sc["nr_samples"],
+        partitions=sc["partitions"],
+        N_i=job.get("N_i", 2),
+    )
     if sig == "stationary":
         # getWhitenoiseSample with one partition is silent half the time (then NaN after normalisation)
         common["partitions"] = 1

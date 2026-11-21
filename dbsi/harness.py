@@ -15,13 +15,15 @@ from .config import DABSIConfig
 from .dabsi import DABSI
 from .graph import build_graph_layout
 
-# Legacy graph (discarded, see ring_edges); N_i does not affect the generated RIRs.
+# Legacy graph (discarded, see circulant_edges); N_i does not affect the generated RIRs.
 _LIB_N_I = 2
 
 
-def ring_edges(M: int) -> list[tuple[int, int]]:
-    """Directed ring i -> i+1 (mod M) with self loops, the topology of all experiments."""
-    return [(i, i) for i in range(M)] + [(i, (i + 1) % M) for i in range(M)]
+def circulant_edges(M: int, N_i: int = 2) -> list[tuple[int, int]]:
+    """Directed circulant graph i -> i+k (mod M) for k < N_i, self loops included (N_i=2 is the ring)."""
+    if not 1 <= N_i <= M:
+        raise ValueError(f"need 1 <= N_i <= M, got N_i={N_i}, M={M}")
+    return [(i, (i + k) % M) for k in range(N_i) for i in range(M)]
 
 
 # --------------------------------------------------------------------------- scenario
@@ -58,6 +60,7 @@ def generate_wgn_scenario(
     nr_samples: int = 500_000,
     partitions: int = 400,
     src_signal: np.ndarray | None = None,
+    N_i: int = 2,
 ) -> Scenario:
     """Random WGN-RIR scenario exactly as in ``simulations/wgn_rooms.py`` (single part, no dynamics).
 
@@ -87,7 +90,7 @@ def generate_wgn_scenario(
         vad=np.asarray(vad, dtype=bool),
         rirs_f=rirs_f[0],
         leading_zeros=[int(z) for z in leading_zeros[0]],
-        edges=ring_edges(M),
+        edges=circulant_edges(M, N_i),
         mic_snr_db=mic_snr_db,
         L=L,
     )
@@ -104,6 +107,7 @@ def generate_room_scenario(
     roomsize: tuple = (2, 6),
     rt60: float | None = None,
     src_signal: np.ndarray | None = None,
+    N_i: int = 2,
 ) -> Scenario:
     """Random shoebox-room scenario as in ``simulations/simulated_rooms.py`` (white source, single part)."""
     from lib import simulation_utils as su
@@ -136,7 +140,7 @@ def generate_room_scenario(
         vad=np.asarray(vad, dtype=bool),
         rirs_f=rirs_f[0],
         leading_zeros=[int(z) for z in leading_zeros[0]],
-        edges=ring_edges(M),
+        edges=circulant_edges(M, N_i),
         mic_snr_db=mic_snr_db,
         L=L,
     )
@@ -152,6 +156,7 @@ def generate_meas_scenario(
     fs: int = 2000,
     myriad_path: str = ".myriad",
     src_signal: np.ndarray | None = None,
+    N_i: int = 2,
 ) -> Scenario:
     """Measured-RIR scenario from the local MYRiAD archive (white source, single part, M-4 external mics)."""
     from lib import simulation_utils as su
@@ -176,7 +181,7 @@ def generate_meas_scenario(
         vad=np.asarray(vad, dtype=bool),
         rirs_f=rirs_f[0],
         leading_zeros=[int(z) for z in leading_zeros[0]],
-        edges=ring_edges(M),
+        edges=circulant_edges(M, N_i),
         mic_snr_db=mic_snr_db,
         L=L,
     )
