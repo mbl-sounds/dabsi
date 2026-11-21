@@ -30,7 +30,7 @@ cd "$WORK"
 for d in .librispeech .myriad; do
     [[ -d "$d" ]] || { echo "missing $WORK/$d: copy the data (see slurm/setup_cluster.sh)" >&2; exit 1; }
 done
-python "$CODE/run_experiments.py" "$EXPERIMENT" --out "$OUT" \
+python "$CODE/run_experiments.py" "$EXPERIMENT" --out "$OUT" --force \
     --processes "$SLURM_CPUS_PER_TASK" \
     --shard "$SLURM_ARRAY_TASK_ID/$SLURM_ARRAY_TASK_COUNT" \
     ${ALGS:+--algs $ALGS}

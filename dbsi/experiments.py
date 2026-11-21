@@ -243,6 +243,8 @@ EXPERIMENTS = {
         scenario=dict(
             kind="meas",
             fs=2000,
+            nr_samples= 1_000_000,
+            partitions=800,
             myriad_path=".myriad",
         ),
         grid=dict(M=[6], SNR=[50, 40, 30, 20], signal=["white", "speech"]),
