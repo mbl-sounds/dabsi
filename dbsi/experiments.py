@@ -243,7 +243,7 @@ EXPERIMENTS = {
         scenario=dict(
             kind="meas",
             fs=2000,
-            nr_samples= 1_000_000,
+            nr_samples=1_000_000,
             partitions=800,
             myriad_path=".myriad",
         ),
