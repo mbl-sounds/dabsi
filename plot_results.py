@@ -17,6 +17,7 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
+import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
@@ -25,7 +26,12 @@ from scipy.signal import savgol_filter
 from dbsi import analysis as an
 
 ROOT = Path(__file__).resolve().parent
-FIGSIZE = (3.4, 2.6)  # one IEEE column (245 pt)
+FIG_WIDTH_PT = 400  # same as lib/simulation_utils.py in the journal repo
+FIG_RATIO_ONE_ROW = 0.5  # same as lib/simulation_utils.py in the journal repo
+FIG_RATIO_TWO_ROW = 0.7  # same as lib/simulation_utils.py in the journal repo
+FIGSIZE = (FIG_WIDTH_PT / 72.27, FIG_WIDTH_PT / 72.27 * FIG_RATIO_ONE_ROW)
+FIGSIZE_GRID = (FIG_WIDTH_PT / 72.27, FIG_WIDTH_PT / 72.27 * FIG_RATIO_TWO_ROW)
+REDUCE = {"median": np.nanmedian, "mean": np.nanmean}
 # base name, letter, plot label, LaTeX label, colour (letters as in the figure captions)
 ALGS = [
     ("dabsi", "A", "DABSI", r"\gls{dabsi}", "tab:blue"),
@@ -34,8 +40,21 @@ ALGS = [
     ("dgd", "D", "DGD", r"\gls{dgd}", "tab:red"),
     ("dsaawet", "E", "DSAAWET", r"\gls{dsaawet}", "tab:purple"),
 ]
-# markers as in plot_complexity_scaling.py; S-MCQN has no entry there
+# markers and style as in plot_complexity_scaling.py; S-MCQN has no entry there
 MARKERS = {"A": "o", "B": "s", "C": "^", "D": "d", "E": "+"}
+STYLE = {
+    "font.family": "serif",
+    "text.usetex": False,
+    "pgf.rcfonts": False,
+    "font.size": 10,
+}
+
+
+def _style(ax):
+    ax.tick_params(axis="both", which="major", labelsize=9, length=2.5)
+    ax.tick_params(axis="both", which="minor", labelsize=9, length=1.5)
+    ax.grid(True, which="major", alpha=0.25, linewidth=0.45)
+    ax.margins(x=0.0)
 
 
 def variant(names, base, lambd):
@@ -71,7 +90,13 @@ def tag(point, vary, snr=True):
 
 
 def smooth(y, window):
-    return savgol_filter(y, window, 1) if window >= 3 and len(y) > window else y
+    """Savitzky-Golay smoothing over the finite samples; non-finite samples (diverged runs) stay NaN."""
+    ok = np.isfinite(y)
+    if window < 3 or ok.sum() <= window:
+        return y
+    out = np.full(y.shape, np.nan)
+    out[ok] = savgol_filter(y[ok], window, 1)
+    return out
 
 
 def hop_seconds(exp_dir):
@@ -80,34 +105,36 @@ def hop_seconds(exp_dir):
     return cfg["L"] / cfg["scenario"]["fs"]
 
 
-def conv_figure(g, order, every, window, hop):
-    """Median NPM (solid) and NPMA (dashed) in dB over time, all algorithms of one grid point."""
-    fig, ax = plt.subplots(figsize=FIGSIZE)
+def _conv_curves(ax, g, order, every, window, hop, reduce):
     for letter, _, _, color, name in order:
         for metric, ls in (("npm", "-"), ("npma", "--")):
-            lin = an.curves(g, metric, db=False, alg=name)[:, ::every]
-            if lin.size == 0:
+            db = an.curves(g, metric, db=True, alg=name)[:, ::every]
+            if db.size == 0:
                 continue
-            med = smooth(np.nanmedian(lin, axis=0), window)
+            med = smooth(reduce(db, axis=0), window)
             ax.plot(
                 np.arange(med.size) * every * hop,
-                20 * np.log10(med),
+                med,
                 ls,
                 color=color,
-                lw=1,
                 marker=MARKERS[letter],
                 markevery=max(1, med.size // 10),
                 markersize=5,
                 markerfacecolor="white",
             )
+
+
+def _conv_handles(order):
     handles = [
         Line2D(
             [0],
             [0],
             color=c,
             marker=MARKERS[letter],
+            markersize=5,
             markerfacecolor="white",
-            label=f"{letter} {label}",
+            # label=f"{letter} {label}",
+            label=f"{label}",
         )
         for letter, label, _, c, _ in order
     ]
@@ -115,38 +142,109 @@ def conv_figure(g, order, every, window, hop):
         Line2D([0], [0], color="k", ls="-", label="NPM"),
         Line2D([0], [0], color="k", ls="--", label=r"NPM$_{\mathrm{avg}}$"),
     ]
-    ax.set(xlabel="Time [s]", ylabel=r"NPM$^{(\tau)}$ [dB]")
-    ax.set_ylim(top=0)
-    ax.grid(alpha=0.3)
-    ax.legend(handles=handles, fontsize=6, frameon=False, ncol=2)
-    fig.tight_layout()
+    return handles
+
+
+def conv_figure(g, order, every, window, hop, agg="median", info=""):
+    """Median or mean (over runs, of the per-run dB) NPM (solid) and NPMA (dashed) over time."""
+    with plt.rc_context(STYLE):
+        fig, ax = plt.subplots(figsize=FIGSIZE)
+        _conv_curves(ax, g, order, every, window, hop, REDUCE[agg])
+        ax.set_xlabel("Time [s]")
+        ax.set_ylabel(r"NPM$^{(\tau)}$ [dB]", labelpad=0)
+        ax.margins(y=0.2)
+        ax.set_ylim(top=0)
+        _style(ax)
+        ax.text(
+            0.02,
+            0.04,
+            info,
+            transform=ax.transAxes,
+            ha="left",
+            va="bottom",
+            fontsize=9,
+            path_effects=[pe.withStroke(linewidth=2, foreground="white")],
+        )
+        ax.legend(
+            handles=_conv_handles(order),
+            loc="lower center",
+            bbox_to_anchor=(0.5, 1.0),
+            ncol=3,
+            frameon=False,
+            fontsize=8,
+            handlelength=1.8,
+            columnspacing=1.0,
+        )
+        fig.subplots_adjust(left=0.12, right=0.985, bottom=0.14, top=0.85)
+    return fig
+
+
+def conv_grid(cells, order, every, window, agg="median"):
+    """Convergence grid of a 2x2 nested list of ``(g, hop, info)`` with shared axes."""
+    with plt.rc_context(STYLE):
+        fig, axes = plt.subplots(2, 2, figsize=FIGSIZE_GRID, sharex=True, sharey="row")
+        for ax_row, cell_row in zip(axes, cells):
+            for ax, (g, hop, info) in zip(ax_row, cell_row):
+                _conv_curves(ax, g, order, every, window, hop, REDUCE[agg])
+                ax.margins(y=0.2)
+                ax.set_ylim(top=0)
+                _style(ax)
+                ax.text(
+                    0.02,
+                    0.04,
+                    info,
+                    transform=ax.transAxes,
+                    ha="left",
+                    va="bottom",
+                    fontsize=9,
+                    path_effects=[pe.withStroke(linewidth=2, foreground="white")],
+                )
+        for ax in axes[:, 0]:
+            ax.set_ylabel(r"NPM$^{(\tau)}$ [dB]", labelpad=0)
+        for ax in axes[1]:
+            ax.set_xlabel("Time [s]")
+        fig.legend(
+            handles=_conv_handles(order),
+            loc="lower center",
+            bbox_to_anchor=(0.5, 0.91),
+            borderaxespad=0,
+            ncol=6,
+            frameon=False,
+            fontsize=8,
+            handlelength=1.8,
+            columnspacing=1.0,
+        )
+        fig.subplots_adjust(
+            left=0.12, right=0.985, bottom=0.14, top=0.91, wspace=0.08, hspace=0.12
+        )
     return fig
 
 
 def final_figure(g, order):
     """Final NPM [dB] (median and IQR over runs) over SNR, all algorithms of one signal and setting."""
-    fig, ax = plt.subplots(figsize=FIGSIZE)
-    for letter, label, _, color, name in order:
-        s = g.filter(g["alg"] == name).sort("SNR")
-        if s.height == 0:
-            continue
-        med, q1, q3 = s["median"].to_numpy(), s["q1"].to_numpy(), s["q3"].to_numpy()
-        ax.errorbar(
-            s["SNR"].to_numpy(),
-            med,
-            yerr=[med - q1, q3 - med],
-            color=color,
-            marker=MARKERS[letter],
-            ms=3,
-            mfc="white",
-            capsize=2,
-            lw=1,
-            label=f"{letter} {label}",
-        )
-    ax.set(xlabel="SNR [dB]", ylabel="Final NPM [dB]")
-    ax.grid(alpha=0.3)
-    ax.legend(fontsize=6, frameon=False)
-    fig.tight_layout()
+    with plt.rc_context(STYLE):
+        fig, ax = plt.subplots(figsize=FIGSIZE)
+        for letter, label, _, color, name in order:
+            s = g.filter(g["alg"] == name).sort("SNR")
+            if s.height == 0:
+                continue
+            med, q1, q3 = s["median"].to_numpy(), s["q1"].to_numpy(), s["q3"].to_numpy()
+            ax.errorbar(
+                s["SNR"].to_numpy(),
+                med,
+                yerr=[med - q1, q3 - med],
+                color=color,
+                marker=MARKERS[letter],
+                ms=3,
+                mfc="white",
+                capsize=2,
+                lw=1,
+                label=f"{letter} {label}",
+            )
+        ax.set(xlabel="SNR [dB]", ylabel="Final NPM [dB]")
+        _style(ax)
+        ax.legend(fontsize=8, frameon=False)
+        fig.subplots_adjust(left=0.12, right=0.985, bottom=0.14, top=0.97)
     return fig
 
 
