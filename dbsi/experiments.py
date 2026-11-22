@@ -190,7 +190,7 @@ EXPERIMENTS = {
     "scalability": dict(
         name="scalability",
         seed=1,
-        runs=10,
+        runs=20,
         L=128,
         scenario=_ROOM,
         grid=dict(M=[6, 8, 10, 12], N_i=[2, 3, 4], SNR=[30], signal=["white"]),
