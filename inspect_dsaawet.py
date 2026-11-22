@@ -36,12 +36,13 @@ def main() -> None:
     print(s.sort(["signal", "alg"]).select(COLS))
 
     algs = sorted(df["alg"].unique().to_list())
+    titles = {"white": "speech-like WGN", "stationary": "stationary WGN"}
     fig, axes = plt.subplots(1, 2, sharey=True, figsize=(10, 4))
     for ax, sig in zip(axes, ["white", "stationary"]):
         for a in algs:
             c = an.curves(df, signal=sig, alg=a)  # [R, T] in dB
             ax.plot(np.median(c, axis=0), label=a)
-        ax.set_title(sig)
+        ax.set_title(titles[sig])
         ax.set_xlabel("frame")
         ax.set_ylim(top=0)
     axes[0].set_ylabel("misalignment [dB]")
