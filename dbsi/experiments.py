@@ -503,11 +503,15 @@ def compute_prior(exp: dict, prior: dict | None, cache_dir: Path) -> np.ndarray:
 
 
 def precompute_priors(exp: dict, out_dir: Path) -> None:
-    """Fetch the measured dataset if needed and build all prior covariances once (before workers start)."""
+    """Fetch the datasets if needed and build all prior covariances once (before workers start)."""
     if exp["scenario"]["kind"] == "meas":
         from lib import simulation_utils as su
 
         su.downloadMyriad(path=exp["scenario"]["myriad_path"])
+    if "speech" in exp["grid"].get("signal", []):
+        from lib import simulation_utils as su
+
+        su.downloadLibrispeech(path=LIBRISPEECH_PATH, dataset=LIBRISPEECH_DATASET)
     for spec in exp["algs"].values():
         if spec.get("lambd") and spec.get("prior"):
             compute_prior(exp, spec["prior"], Path(out_dir) / "_priors")
